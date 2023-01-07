@@ -1,4 +1,4 @@
-<h1 align="center">Team-68</h1>
+<h1 align="center">Elevated Blood Pressure Study</h1>
 
 <div align="center">
   :stethoscope::adhesive_bandage::drop_of_blood::pill::adhesive_bandage::stethoscope:
