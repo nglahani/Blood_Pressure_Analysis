@@ -1,0 +1,347 @@
+---
+title: "EDA - Examination Data"
+author: "Vincent Pan"
+date: "2022-10-16"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_knit$set(root.dir = 'C:/Users/Vince/OneDrive/Documents/GitHub/Team-68')
+```
+
+# Goal
+
+Run some Exploratory Data Analysis on the 'Examination' data set belonging to National Health and Nutrition Examination Survey.
+
+This will be used to model Blood Pressure Status.
+
+The data dictionary [is linked here](https://wwwn.cdc.gov/Nchs/Nhanes/Search/variablelist.aspx?Component=Examination&CycleBeginYear=2013) for the data set.
+
+# Backgrownd on Blood Pressure
+
+From [WebMd](https://www.webmd.com/hypertension-high-blood-pressure/guide/diastolic-and-systolic-blood-pressure-know-your-numbers): Blood pressure is measured using two numbers: The first number, called systolic blood pressure, measures the pressure in your arteries when your heart beats. The second number, called diastolic blood pressure, measures the pressure in your arteries when your heart rests between beats.
+
+![](https://medical.andonline.com/wp-content/uploads/2021/08/SYS-DIA-illustration-1030x687.png){width=50%}
+
+
+The status or blood pressure category is built on a combination of the two numbers. Below is a chart that illustrates this:
+
+![](https://medical.andonline.com/wp-content/uploads/2021/08/AHA-guideline-1030x687.png){width=50%}
+
+# Exploratory Data Analysis
+
+```{r library, message=FALSE}
+### Load libraries
+
+library(dplyr)
+library(tidyverse)
+library(ggplot2)
+library(corrplot)
+library(rvest)
+library(xml2)
+
+
+setwd("C:/Users/Vince/OneDrive/Documents/GitHub/Team-68")
+dir.data <- "Data/Original"
+dir.code <- "Code/Vincent"
+```
+
+
+
+```{r loaddata}
+### LOAD DATA
+
+### rm(list = ls())
+df.examination <- read.csv(paste0(dir.data,"/examination.csv"), stringsAsFactors = FALSE, header = TRUE)
+df.examination <- as.data.frame(df.examination)
+```
+
+
+```{r structure}
+## LOOK AT STRUCTURE OF DATA
+str(df.examination, list.len = 5)
+```
+
+The Variable PEASCST1 is the 'Blood Pressure Status'
+
+We also see that there are other Blood Pressure Related Metrics/ Variables. Let's create two data sets:
+
+1. Blood Pressure (PEASCST1) with the Other Blood Pressure Variables (Variables starting with BP OR PEA): `df.examination.bp`, 
+2. Blood Pressure (PEASCST1) with non-Blood Pressure Variables. `df.examination.rest`
+
+
+
+```{r bpsets}
+v.bp.col.list <- c(grep("BP", names(df.examination)), grep("PEA", names(df.examination))) %>% sort
+v.bp.col.excl <- v.bp.col.list[v.bp.col.list != grep("PEASCST1", names(df.examination))]
+
+df.examination.bp <- df.examination %>%
+                          select(SEQN, v.bp.col.list)
+  
+df.examination.rest <- df.examination %>%
+                          select(!v.bp.col.excl)
+```
+
+```{r}
+
+### Note one column is the identifier
+dim(df.examination.rest)
+```
+## Look at how the response variable is distributed
+
+```{r bpbarplot}
+### Understand Blood Pressure
+table(df.examination.rest$PEASCST1, useNA = "always")
+prop.table(table(df.examination.rest$PEASCST1, useNA = "always"))
+```
+
+We see that there are three categories for Blood Pressure that are stored in the data
+
+
+
+## Understand State of Missing data
+
+```{r}
+
+perc.missing.rest <- colSums(is.na(df.examination.rest))/nrow(df.examination.rest)
+perc.missing.rest <- as.data.frame(perc.missing.rest)
+perc.missing.rest$variable <- rownames(perc.missing.rest)
+```
+
+There are a lot of data that is missing
+```{r}
+perc.missing.rest.na.perc.dist <- perc.missing.rest %>%
+                      mutate(percmissingrestrd = round(perc.missing.rest/0.05)*0.05) %>%
+                      group_by(percmissingrestrd) %>%
+                      summarize(n_col = n())
+```
+
+
+```{r}
+p<-ggplot(data=perc.missing.rest.na.perc.dist, aes(x=percmissingrestrd, y=n_col)) +
+  geom_bar(stat="identity")  +
+  geom_text(aes(label=n_col), vjust=-0.5) +
+  ggtitle("Variables by Percentage of Missing Values \n Examination Data Set") +
+  xlab("Percentage of Missing Values") + ylab("Number of Variables") +
+  scale_x_continuous(labels = scales::percent)
+p
+```
+
+We observe that they are 34 columns with full data, 4 with 95% data, and 35 with 90% data.
+
+Let's filter to those.
+
+```{r}
+filtered.90pOrMore <- perc.missing.rest %>%
+        filter(perc.missing.rest <= 0.1)
+```
+
+```{r}
+head(filtered.90pOrMore)
+```
+
+
+
+It's try to understand them.
+
+First import the data dictionary into R
+```{r}
+
+library(rvest)
+
+url <- "https://wwwn.cdc.gov/Nchs/Nhanes/Search/variablelist.aspx?Component=Examination&CycleBeginYear=2013"
+ddictionary <- url %>% 
+               read_html() %>%
+              html_table(fill = TRUE)
+ddictionary <- ddictionary[[1]] 
+ddictionary.df <- as.data.frame(ddictionary)
+head(ddictionary)
+```
+
+
+```{r}
+for (variable in filtered.90pOrMore$variable) {
+  print(variable)
+  
+  ddictionary[which(ddictionary$`Variable Name` == variable), c("Variable Description")] %>%
+      as.character() %>%
+      print()
+  
+  
+  nvalues <- length(table(df.examination.rest[,c(variable)]))
+  if (nvalues > 10 ) {print("more than 10 values")
+  } else {
+  print(table(df.examination.rest[,c(variable)], useNA = "always"))
+  }
+}
+```
+
+We can observe that there are a lot of tooth related variables.
+
+Instead of predicting on 30 Tooth Code values (OHX##CTC), let's create a new variable. For each entry, how many D's, P's, etc.
+
+I will impute missing variables a median value.
+
+```{r}
+
+all.values <- data.frame()
+
+for (i in 2:31) {
+  i <- 4
+  i.str <- str_sub(paste0("0", as.character(i)), start= -2)
+  all.values <- c(all.values, unique(df.examination[paste0("OHX",i.str,"CTC")])) %>%
+                unlist() %>%
+                unique()
+  
+}
+
+```
+
+
+
+
+```{r}
+library(reshape)
+library(dplyr)
+library(tidyr)
+```
+
+
+```{r}
+tooth.health.cols <- df.examination[,grepl("OHX",names(df.examination)) & grepl("CTC",names(df.examination))]
+tooth.health.df <- cbind(df.examination$SEQN,tooth.health.cols)
+names(tooth.health.df)[1] = "SEQN"
+tooth.health.df$row_num <-  seq.int(nrow(tooth.health.df)) 
+
+tooth.health.df.result <- melt(tooth.health.df, id = c("row_num", "SEQN"))
+
+tooth.health.df.result$value[tooth.health.df.result$value ==""] <- "Delete"
+```
+
+
+```{r}
+
+
+tooth.health.df.result.p <- tooth.health.df.result %>%
+  group_by(row_num, SEQN) %>%
+    count(value) %>%
+    pivot_wider(
+      names_from = value,
+      values_from = n, 
+      values_fill = 0
+    )
+tooth.health.df.result.p <- tooth.health.df.result.p %>%
+                              select(-Delete)
+```
+
+
+```{r}
+tooth.health.df.result.p <- tooth.health.df.result.p %>%
+                                as.data.frame() %>%
+                                select(-row_num)
+```
+
+```{r}
+head(tooth.health.df.result.p)
+```
+
+I've reduced 16 rows to 16 columns
+
+### Final gathering of columns
+
+We want to get all the relevant columns
+
+
+```{r}
+relevant.cols.parta <- df.examination[,!(grepl("OHX",names(df.examination)) & grepl("CTC",names(df.examination)))]
+
+```
+
+```{r}
+relevant.cols <- df.examination[, names(df.examination) %in% c("PEASCST1", filtered.90pOrMore$variable)]
+relevant.cols <- relevant.cols[,!(grepl("OHX",names(relevant.cols)) & grepl("CTC",names(relevant.cols)))]
+relevant.cols <- left_join(relevant.cols,tooth.health.df.result.p, by = c("SEQN" = "SEQN"))
+relevant.cols <-relevant.cols %>% 
+                select(-CSXTSEQ)
+      ## This variable relates to Sequence in which whole mouth taste tests were administered.
+      ## and not the patient
+
+relevant.cols <- as.data.frame(sapply( relevant.cols, as.numeric ))
+```
+
+
+We will set the NA's to the most common value for the tooth counts
+
+```{r}
+for (variable in names(relevant.cols)[grepl("OH",names(relevant.cols))]) {
+relevant.cols[is.na(relevant.cols[,c(variable)]),c(variable)] <- as.numeric(names(sort(-prop.table(table(relevant.cols[,c(variable)], useNA = "always"))))[1])
+}
+```
+
+We will set the measurements (around 5-7% of data) to the medium value (e.g. medium height)
+
+```{r}
+for (variable in names(relevant.cols)[grepl("BMX",names(relevant.cols))]) {
+  
+relevant.cols[is.na(relevant.cols[,c(variable)]),c(variable)] <- median(relevant.cols[,c(variable)], na.rm=TRUE)
+}
+```
+
+
+
+# Calculate VIF
+```{r}
+model <- lm(PEASCST1  ~., data = relevant.cols)
+#load the car library
+library(car)
+
+#create vector of VIF values
+vif_values <- vif(model)
+sort(vif_values)
+```
+
+
+
+We see from the first VIF, that P has and Q have a high VIF.
+
+P, Q, R, and X are all missing but replaced tooth so lets remove them ( as the other numbers will act like dummy variable that sum up to the total expect tooth count).
+
+We will also remove the BMI column as we have Weight and Height
+
+```{r}
+relevant.cols.pqr <- relevant.cols %>%
+                     select(-c(P, Q, R, X, BMXBMI))
+```
+And run the VIF again
+
+```{r}
+model <- lm(PEASCST1  ~., data = relevant.cols.pqr)
+
+#create vector of VIF values
+vif_values <- vif(model)
+sort(vif_values)
+```
+
+
+
+```{r}
+
+library(corrplot)
+res <- cor(relevant.cols.pqr)
+corrplot(res, type = "upper", order = "hclust", 
+         tl.col = "black", tl.srt = 45)
+
+```
+
+We see that there are some highly correlated variables. However this is expected. One healthy tooth probably is very likely to be next to another healthy tooth.
+
+
+
+
+
+```{r}
+dir.data.clean = "Data/Cleaned"
+write.csv(relevant.cols.pqr,paste0(dir.data.clean,"/examination_cleaned.csv"), row.names = TRUE)
+```
+

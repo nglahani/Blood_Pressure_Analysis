@@ -1,0 +1,26 @@
+Variable.Name,Variable.Description
+SEQN,Respondent sequence number.
+WTDR2D,Dietary two-day sample weight
+DR1DRSTZ,Dietary recall status
+DR1EXMER,Interviewer ID code
+DRDINT,Indicates whether the sample person has intake data for one or two days.
+DR1DAY,Intake day of the week
+DR1LANG,The respondent spoke mostly:
+DBQ095Z,What type of salt {do you/does SP} usually add to {your/his/her/SP's} food at the table? Would you say . . .
+DR1STY,"Did {you/SP} add any salt to {your/her/his} food at the table yesterday? Salt includes ordinary or seasoned salt, lite salt, or a salt substitute."
+DRQSDIET,"Are you currently on any kind of diet, either to lose weight or for some other health-related reason?"
+DR1TNUMF,Total number of foods/beverages reported in the individual foods file
+DR1TSUGR,Total sugars (gm)
+DR1TLYCO,Lycopene (mcg)
+DR1TVC,Vitamin C (mg)
+DR1TVK,Vitamin K (mcg)
+DR1TCAFF,Caffeine (mg)
+DR1TS120,SFA 12:0 (Dodecanoic) (gm)
+DR1TP183,PFA 18:3 (Octadecatrienoic) (gm)
+DR1TP184,PFA 18:4 (Octadecatetraenoic) (gm)
+DR1TP204,PFA 20:4 (Eicosatetraenoic) (gm)
+DR1TP226,PFA 22:6 (Docosahexaenoic) (gm)
+DR1BWATZ,Total bottled water drank yesterday (gm)
+DR1TWS,"When you drink tap water, what is the main source of the tap water? Is the city water supply (community water supply); a well or rain cistern; a spring; or something else?"
+DRD340,"Please look at this list of shellfish. During the past 30 days did you eat any types of shellfish listed on this card? Include any foods that had shellfish in them such as sandwiches, soups, or salads."
+DRD360,"Please look at this list of fish. During the past 30 days did you eat any types of fish listed on this card? Include any foods that had fish in them such as sandwiches, soups, or salads."

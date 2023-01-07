@@ -1,0 +1,82 @@
+
+
+ 
+
+
+
+```{r}
+install.packages('dplyr')
+install.packages('tidyr')
+library(tidyr)
+library(dplyr)
+
+library(readr) 
+demographic = read_csv("demographic.csv")
+
+head(demographic)  
+```
+
+#Loading Labels
+```{r}
+examination = read_csv("examination.csv")
+head(examination)
+```
+#Evaluating sparsity of columns, and only keeping those with at least 70% coverage
+```{r}
+na_count <-sapply(demographic, function(y) sum(length(which(is.na(y))))/sum(length(y)))
+sort(na_count)
+
+col_to_keep = c()
+for (x in 1:length(na_count)){
+  if (na_count[x] < .10){
+    col_to_keep = c(col_to_keep, na_count[x])
+    }
+}
+col_to_keep = names(col_to_keep)
+col_to_keep
+
+
+
+df_demographic_non_nulls = demographic %>% drop_na(col_to_keep)
+
+df_demographic_non_nulls
+
+#write.csv(df_demographic_non_nulls['SEQN'],"non_null_demographic_seqn.csv", row.names = FALSE)
+
+df_demo_cols_filtered = df_demographic_non_nulls[col_to_keep]
+
+summary(df_demo_cols_filtered)
+
+#DMDHRMAR shouldn't have 99
+
+c2d = c('RIDSTATR','SDDSRVYR','SIAPROXY','SIAINTRP','FIAPROXY','FIAINTRP')
+
+df_demo_cols_filtered = df = df_demo_cols_filtered[,!(names(df_demo_cols_filtered) %in% c2d)]
+summary(df_demo_cols_filtered)
+
+str(df_demo_cols_filtered)
+
+#Convert to strings
+colnames(df_demo_cols_filtered)
+categorical_cols = c('RIAGENDR','RIDRETH1','RIDRETH3', 'DMDBORN4','DMDCITZN','SIALANG','FIALANG', 'DMDHRGND','DMDHRBR4','DMDHREDU','DMDHRMAR')
+df_demo_cols_filtered[, categorical_cols] <- sapply(df_demo_cols_filtered[, categorical_cols], as.factor)
+
+str(df_demo_cols_filtered)
+
+write.csv(df_demo_cols_filtered,"non_null_demographic_seqn.csv", row.names = FALSE)
+```
+
+```{r}
+df_non_na = examination %>% drop_na('BPXSY1','BPXDI1')
+
+df_non_na <- df_non_na %>% 
+  mutate(elevated_bp_flag = if_else(BPXSY1 < 120 & BPXDI1 < 80, 0, 1))
+
+
+df_labels = df_non_na[c('SEQN','elevated_bp_flag')]
+
+table(df_labels['elevated_bp_flag'])
+
+write.csv(df_labels,"mgt_6203_labeled_bp_data.csv", row.names = FALSE)
+```
+
