@@ -1,6 +1,6 @@
 <h1 align="center">Elevated Blood Pressure Study</h1>
 
-FULL VIDEO PRESENTATION: https://www.youtube.com/watch?v=KoefB4dfrE0
+<h2 align="center"> FULL VIDEO PRESENTATION: https://www.youtube.com/watch?v=KoefB4dfrE0 </h2>
 
 <div align="center">
   :stethoscope::adhesive_bandage::drop_of_blood::pill::adhesive_bandage::stethoscope:
